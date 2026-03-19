@@ -1,0 +1,110 @@
+name: Build & Deploy Kenya Energy Dashboard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 5 * * 1'   # Weekly Monday 05:00 UTC — refreshes all source data
+  workflow_dispatch:        # Manual trigger from GitHub UI
+
+# Required for GitHub Pages deployment via Actions
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deployment runs at a time; queued runs wait rather than cancel
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 1 — Run pipeline, build dashboard
+  # ──────────────────────────────────────────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── Python ────────────────────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install Python dependencies
+        run: uv sync
+
+      # ── Bruin CLI ─────────────────────────────────────────────────────────
+      - name: Install Bruin CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/bruin-data/bruin/main/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # .bruin.yml is gitignored — create it from the non-sensitive default config
+      - name: Create Bruin config
+        env:
+          BRUIN_CONFIG: |
+            default_environment: default
+            environments:
+              default:
+                connections:
+                  duckdb:
+                    - name: "duckdb-default"
+                      path: "kenya_energy.db"
+        run: echo "$BRUIN_CONFIG" > .bruin.yml
+
+      # ── Run pipeline ──────────────────────────────────────────────────────
+      - name: Run Bruin pipeline
+        run: bruin run pipeline.yml
+
+      # ── Geo spatial marts + GeoJSON export ───────────────────────────────
+      - name: Build geo spatial marts and export GeoJSON
+        run: uv run python scripts/export_geo_data.py
+
+      # ── Node.js / Evidence.dev ────────────────────────────────────────────
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        run: npm ci
+        working-directory: dashboard
+
+      - name: Copy database to Evidence.dev sources
+        run: cp kenya_energy.db dashboard/sources/kenya_energy/kenya_energy.db
+
+      - name: Refresh Evidence source queries
+        run: npm run sources
+        working-directory: dashboard
+
+      - name: Build static dashboard
+        run: npm run build
+        working-directory: dashboard
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard/build
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # JOB 2 — Deploy to GitHub Pages
+  # ──────────────────────────────────────────────────────────────────────────
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

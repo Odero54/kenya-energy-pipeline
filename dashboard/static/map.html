@@ -55,7 +55,7 @@ var layers = {
 };
 
 // ── load data ─────────────────────────────────────────────────────────────
-fetch('/kenya_infrastructure.geojson')
+fetch('./kenya_infrastructure.geojson')
   .then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();

@@ -1,5 +1,5 @@
 .PHONY: help setup install validate run run-ingestion run-staging \
-        run-analytics sources dashboard build-dashboard lint test clean
+        run-analytics geo-export sources dashboard build-dashboard lint test clean
 
 # ─── Help ─────────────────────────────────────────────────────────────────────
 
@@ -14,6 +14,7 @@ help:
 	@echo "  run-ingestion   Run only ingestion layer"
 	@echo "  run-staging     Run only staging layer"
 	@echo "  run-analytics   Run only mart layer"
+	@echo "  geo-export      Build geo spatial marts + export GeoJSON"
 	@echo "  sources         Refresh Evidence source queries"
 	@echo "  dashboard       Start Evidence.dev dev server"
 	@echo "  build-dashboard Build Evidence static site"
@@ -71,6 +72,11 @@ run-analytics:
 	bruin run assets/analytics/mart_energy_kpis.sql
 	bruin run assets/analytics/mart_geo_infrastructure.sql
 
+geo-export:
+	@echo "→ Building geo spatial marts and exporting GeoJSON..."
+	uv run python scripts/export_geo_data.py
+	@echo "✓ GeoJSON written to dashboard/static/kenya_infrastructure.geojson"
+
 # ─── Evidence.dev dashboard ───────────────────────────────────────────────────
 
 sources:
@@ -85,6 +91,7 @@ dashboard:
 	cd dashboard && npm run dev
 
 build-dashboard:
+	uv run python scripts/export_geo_data.py
 	cp kenya_energy.db dashboard/sources/kenya_energy/kenya_energy.db
 	cd dashboard && npm run sources && npm run build
 

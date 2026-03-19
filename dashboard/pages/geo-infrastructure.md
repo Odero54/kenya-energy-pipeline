@@ -1,8 +1,8 @@
 ---
-title: Geo Infrastructure
+title: Geospatial Infrastructure
 ---
 
-# Kenya Energy Geo Infrastructure
+# Kenya Energy Geospatial Infrastructure
 
 Physical energy infrastructure sourced from [EnergyData.info](https://energydata.info):
 transmission corridors (66 kV–220 kV), substations, and solar measurement stations across Kenya.

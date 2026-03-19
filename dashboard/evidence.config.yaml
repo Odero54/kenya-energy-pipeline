@@ -3,3 +3,5 @@ plugins:
     '@evidence-dev/core-components': {}
   datasources:
     '@evidence-dev/duckdb': {}
+deployment:
+  basePath: '/kenya-energy-pipeline'

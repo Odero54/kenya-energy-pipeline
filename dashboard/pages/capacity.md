@@ -2,8 +2,6 @@
 title: Installed Capacity
 ---
 
-# Installed Capacity
-
 Tracking Kenya's renewable power capacity growth from IRENA statistics,
 broken down by technology: Geothermal, Hydro, Wind, Solar, and Bioenergy.
 

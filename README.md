@@ -4,35 +4,25 @@ A full end-to-end data pipeline built with **Bruin** that ingests Kenya energy d
 from four open-source datasets, transforms it through a medallion architecture
 (Bronze → Silver → Gold), and serves it via an **Evidence.dev** dashboard.
 
-**Live dashboard:** [https://odero54.github.io/kenya-energy-pipeline/](https://odero54.github.io/kenya-energy-pipeline/)
-**Repository:** [https://github.com/Odero54/kenya-energy-pipeline/](https://github.com/Odero54/kenya-energy-pipeline/)
+**Live dashboard:** https://odero54.github.io/kenya-energy-pipeline/  
+**Repository:** https://github.com/Odero54/kenya-energy-pipeline/
 
 ---
 
 ## Architecture
 
-```
-Data Sources              Ingestion (Bronze)            Staging (Silver)
-─────────────────         ──────────────────────        ──────────────────────────────
-Ember Climate       ───►  raw_ember_generation.py  ───► stg_ember_generation.sql
-Our World in Data   ───►  raw_owid_energy.py        ───► stg_owid_energy.sql
-IRENA               ───►  raw_irena_capacity.py     ───► stg_irena_capacity.sql
-EnergyData.info     ───►  raw_energydata_geo.py     ───► (flat geo features)
-seeds/              ───►  (CSV seed)                ───► stg_source_categories.sql
-                                                         stg_energy_unified.py  ──┐
-                                                                                   │
-Analytics (Gold)          Dashboard                                                │
-──────────────────         ──────────────────────────────────────────────────────◄─┘
-mart_renewable_mix   ───► pages/index.md            (Generation mix, 2030 progress)
-mart_capacity_trend  ───► pages/capacity.md         (Installed MW, CUF)
-mart_energy_kpis     ───► pages/kpis.md             (Access, per-capita, CO₂)
-mart_generation_by_source ► pages/sources.md        (Source explorer, filters)
-mart_geo_infrastructure ─► pages/geo-infrastructure.md (Map, substations, lines)
-                           scripts/export_geo_data.py ► static/kenya_infrastructure.geojson
-```
+![Kenya renewable energy — bruin data pipeline](docs/architecture.png)
 
-**Storage:** Single DuckDB file (`kenya_energy.db`) with schemas:
-`ingestion` → `staging` → `mart`
+The pipeline follows a **medallion architecture** across four layers, all stored in a single DuckDB file:
+
+| Layer | Schema | What happens |
+|---|---|---|
+| **Bronze** | `ingestion` | Raw data fetched from Ember, OWID, IRENA, EnergyData.info |
+| **Silver** | `staging` | Cleaned, normalised, joined — quality checks enforced |
+| **Gold** | `mart` | Business-ready aggregations: mix, capacity, KPIs, geo |
+| **Serving** | — | Evidence.dev static dashboard, deployed via GitHub Pages |
+
+**Storage:** Single DuckDB file (`kenya_energy.db`) — schemas: `ingestion` → `staging` → `mart`
 
 ---
 
@@ -55,14 +45,12 @@ kenya-energy-pipeline/
 ├── .bruin.yml                          # DuckDB connection config
 ├── pipeline.yml                        # Pipeline name + schedule
 ├── pyproject.toml                      # uv / Python deps (uv sync)
-├── requirements.txt                    # Legacy stub — see pyproject.toml
 ├── Makefile                            # Common operations
+├── docs/
+│   └── architecture.png               # Pipeline architecture diagram
 │
 ├── seeds/
 │   └── source_categories.csv           # Energy source → category/color lookup
-│
-├── scripts/
-│   └── export_geo_data.py              # Builds geo spatial marts + exports GeoJSON
 │
 ├── assets/
 │   ├── ingestion/                      # Bronze layer — raw data fetch
@@ -93,16 +81,10 @@ kenya-energy-pipeline/
 └── dashboard/                          # Evidence.dev app
     ├── sources/kenya_energy/           # DuckDB connection + source queries
     │   ├── connection.yaml
-    │   ├── connection.options.yaml
     │   ├── renewable_mix.sql
     │   ├── capacity_trend.sql
     │   ├── energy_kpis.sql
-    │   ├── generation_by_source.sql
-    │   ├── geo_infrastructure.sql
-    │   └── geo_map_substations.sql
-    ├── static/
-    │   ├── map.html                    # Standalone infrastructure map
-    │   └── kenya_infrastructure.geojson # Exported GeoJSON for the map
+    │   └── generation_by_source.sql
     └── pages/
         ├── index.md                    # Main dashboard: mix + 2030 progress
         ├── capacity.md                 # Installed capacity + CUF
@@ -133,6 +115,7 @@ cd dashboard && npm install
 ```
 
 Or use the Makefile one-liner:
+
 ```bash
 make setup
 ```
@@ -140,7 +123,7 @@ make setup
 ### 2. Validate the pipeline
 
 ```bash
-bruin validate kenya-energy-pipeline/
+bruin validate .
 # or
 make validate
 ```
@@ -148,7 +131,8 @@ make validate
 ### 3. Run the full pipeline
 
 ```bash
-bruin run kenya-energy-pipeline/pipeline.yml
+export BRUIN_PYTHON="uv run python"
+bruin run pipeline.yml
 # or
 make run
 ```
@@ -156,22 +140,13 @@ make run
 Bruin resolves the dependency graph automatically and executes:
 `ingestion → staging → analytics`
 
-### 4. Export geo data
-
-```bash
-uv run python scripts/export_geo_data.py
-```
-
-This builds the geo spatial marts and exports `kenya_infrastructure.geojson`
-into `dashboard/static/` for the infrastructure map page.
-
-### 5. Run a single asset (and all its dependents)
+### 4. Run a single asset and all its dependents
 
 ```bash
 bruin run assets/staging/stg_energy_unified.py --downstream
 ```
 
-### 6. Run layer by layer
+### 5. Run layer by layer
 
 ```bash
 make run-ingestion   # Bronze: fetch raw data
@@ -183,27 +158,22 @@ make run-analytics   # Gold: business marts
 
 ## Dashboard
 
-### Setup (first time only)
-
-```bash
-make dashboard-setup
-```
-
-This scaffolds a blank Evidence.dev project and symlinks `kenya_energy.db`
-into the sources folder.
-
-### Refresh data
-
-```bash
-# After running the Bruin pipeline:
-make dashboard-sources
-```
-
 ### Development server
 
 ```bash
-make dashboard-dev
-# Opens http://localhost:3000
+make dashboard      # copies DB, starts server at http://localhost:3000
+```
+
+### Refresh data after pipeline run
+
+```bash
+make sources        # copies DB → dashboard/sources/ and runs npm run sources
+```
+
+### Build static site
+
+```bash
+make build-dashboard
 ```
 
 ### Dashboard pages
@@ -214,7 +184,27 @@ make dashboard-dev
 | Installed Capacity | `/capacity` | MW by technology, additions, CUF |
 | Energy KPIs | `/kpis` | Access rate, per-capita, carbon intensity |
 | Source Explorer | `/sources` | Filterable by decade, renewable vs fossil |
-| Geo Infrastructure | `/geo-infrastructure` | Infrastructure map: substations, transmission lines |
+| Geo Infrastructure | `/geo-infrastructure` | Transmission network, substations map |
+
+---
+
+## CI/CD — GitHub Actions
+
+The pipeline runs automatically via GitHub Actions on every push to `main` and
+rebuilds daily at 06:00 UTC. Each run:
+
+1. Installs Python 3.11, uv, Bruin CLI, and Node.js 20
+2. Validates all pipeline assets (`bruin validate .`)
+3. Runs the full Bruin pipeline (`bruin run pipeline.yml`)
+4. Builds the Evidence.dev static dashboard (`npm run build`)
+5. Deploys to GitHub Pages
+
+Trigger a manual run from the [Actions tab](https://github.com/Odero54/kenya-energy-pipeline/actions),
+or push locally with:
+
+```bash
+make deploy
+```
 
 ---
 
@@ -222,9 +212,7 @@ make dashboard-dev
 
 ```bash
 # After new data is published by Ember/OWID/IRENA:
-bruin run kenya-energy-pipeline/pipeline.yml && \
-uv run python scripts/export_geo_data.py && \
-cd kenya-energy-pipeline/dashboard && npm run sources
+make refresh        # = make run && make sources
 ```
 
 ---
@@ -247,7 +235,7 @@ cd kenya-energy-pipeline/dashboard && npm run sources
 
 ## Data quality checks
 
-Every asset includes Bruin quality checks. Examples:
+Every asset includes Bruin quality checks:
 
 - `not_null` on `year`, `source_type`, `generation_twh`
 - `accepted_range` on year (2000–2030), `renewable_share_pct` (0–100)
@@ -258,7 +246,7 @@ Every asset includes Bruin quality checks. Examples:
 Run checks only (without re-executing assets):
 
 ```bash
-bruin run --only-checks kenya-energy-pipeline/pipeline.yml
+bruin run --only-checks pipeline.yml
 ```
 
 ---
@@ -266,39 +254,20 @@ bruin run --only-checks kenya-energy-pipeline/pipeline.yml
 ## uv workflows
 
 ```bash
-# Install / sync all deps
-uv sync
-
-# Add a runtime dependency
-uv add requests
-
-# Add a dev-only dependency
-uv add --dev pytest-cov
-
-# Run any command in the managed venv
+uv sync                                          # install / sync all deps
+uv add requests                                  # add a runtime dependency
+uv add --dev pytest-cov                          # add a dev-only dependency
 uv run python assets/ingestion/raw_ember_generation.py
 uv run pytest tests/ -v
 uv run ruff check assets/
-
-# Show dependency tree
-uv tree
-
-# Upgrade all deps to latest compatible versions
-uv lock --upgrade
+uv tree                                          # dependency tree
+uv lock --upgrade                                # upgrade all to latest
 ```
 
-All Python assets in Bruin are invoked through `uv run` automatically
-when you set the `BRUIN_PYTHON` environment variable:
+Set Bruin to use uv's Python (add to `~/.zshrc` to make permanent):
 
 ```bash
 export BRUIN_PYTHON="uv run python"
-bruin run pipeline.yml
-```
-
-Or, set it once in your shell profile (`~/.bashrc` / `~/.zshrc`):
-
-```bash
-echo 'export BRUIN_PYTHON="uv run python"' >> ~/.zshrc
 ```
 
 ---
@@ -306,46 +275,25 @@ echo 'export BRUIN_PYTHON="uv run python"' >> ~/.zshrc
 ## Testing
 
 ```bash
-# Run all tests
-uv run pytest tests/ -v
-
-# Run a single test file
-uv run pytest tests/test_ingestion.py -v
-
-# With coverage report
+uv run pytest tests/ -v                          # all tests
+uv run pytest tests/test_ingestion.py -v         # single file
 uv run pytest tests/ --cov=assets --cov-report=term-missing
-
-# Lint with ruff
-uv run ruff check assets/
-
-# Type-check with mypy
-uv run mypy assets/
+uv run ruff check assets/                        # lint
+uv run mypy assets/                              # type-check
 ```
 
 Tests cover:
-- **`test_ingestion.py`** — Kenya-only filter, required columns, value ranges, DuckDB round-trip
-- **`test_staging.py`** — Normalisation logic, CUF bounds, renewable flag, year deduplication
-- **`test_marts.py`** — Aggregation totals, YoY calculations, share % sums, capacity growth
+
+- `test_ingestion.py` — Kenya-only filter, required columns, value ranges, DuckDB round-trip
+- `test_staging.py` — Normalisation logic, CUF bounds, renewable flag, year deduplication
+- `test_marts.py` — Aggregation totals, YoY calculations, share % sums, capacity growth
 
 ---
 
-## CI/CD
-
-The pipeline runs automatically via GitHub Actions on every push to `main` and on a weekly schedule (Mondays 05:00 UTC). Each run:
-
-1. Installs Python, uv, Bruin CLI, and Node.js
-2. Runs the full Bruin pipeline (`bruin run pipeline.yml --workers 1`)
-3. Exports geo data (`scripts/export_geo_data.py`)
-4. Builds the Evidence.dev static dashboard (`npm run build`)
-5. Deploys to GitHub Pages
-
-Manual runs can be triggered from the [Actions tab](https://github.com/Odero54/kenya-energy-pipeline/actions).
-
----
-
-## License
+## Licenses
 
 All source data is open access:
+
 - Ember Climate — CC BY 4.0
 - Our World in Data — CC BY 4.0
 - IRENA — Free for non-commercial use with attribution

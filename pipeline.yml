@@ -1,0 +1,4 @@
+name: kenya-energy-pipeline
+schedule: "@daily"
+default_connections:
+  duckdb: duckdb-default

@@ -1,0 +1,16 @@
+{
+  "name": "kenya-energy-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "evidence dev",
+    "build": "evidence build",
+    "preview": "evidence preview",
+    "sources": "evidence sources"
+  },
+  "dependencies": {
+    "@evidence-dev/core-components": "latest",
+    "@evidence-dev/duckdb": "latest",
+    "@evidence-dev/evidence": "latest"
+  }
+}

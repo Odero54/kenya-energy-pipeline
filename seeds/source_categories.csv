@@ -1,0 +1,13 @@
+source_type,category,subcategory,is_renewable,color_hex
+Geothermal,Renewables,Geothermal,true,#E8593C
+Hydro,Renewables,Hydro,true,#3B8BD4
+Wind,Renewables,Wind,true,#5DCAA5
+Solar,Renewables,Solar,true,#EF9F27
+Bioenergy,Renewables,Bioenergy,true,#63992A
+Other Renewables,Renewables,Other,true,#9F77DD
+Gas,Fossil Fuels,Gas,false,#888780
+Oil,Fossil Fuels,Oil,false,#5F5E5A
+Coal,Fossil Fuels,Coal,false,#2C2C2A
+Other Fossil,Fossil Fuels,Other,false,#444441
+Nuclear,Nuclear,Nuclear,false,#D4537E
+Imports,Imports,Imports,false,#B4B2A9

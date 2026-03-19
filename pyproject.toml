@@ -1,0 +1,59 @@
+[project]
+name = "kenya-energy-pipeline"
+version = "0.1.0"
+description = "Kenya Renewable Energy Data Pipeline — Bruin + DuckDB + Evidence.dev"
+readme = "README.md"
+requires-python = ">=3.11"
+
+# No [build-system] — this is a scripts/pipeline project, not an installable package.
+# uv manages the virtualenv and dependencies without building a wheel.
+
+dependencies = [
+    # Data fetching & wrangling
+    "pandas>=2.2.0",
+    "requests>=2.31.0",
+    "openpyxl>=3.1.2",        # IRENA Excel files
+    "lxml>=5.1.0",            # HTML/XML parsing fallback
+
+    # Database
+    "duckdb>=1.1.0",
+
+    # Geospatial (EnergyData.info GeoJSON → Shapely WKT)
+    "shapely>=2.0.4",
+    "geopandas>=0.14.4",
+    "pyproj>=3.6.1",
+
+    # World Bank data (supplementary)
+    "wbdata>=1.0.0",
+
+    # Utilities
+    "python-dotenv>=1.0.1",
+    "tenacity>=8.3.0",         # retry logic for HTTP calls
+    "rich>=13.7.0",            # pretty logging
+]
+
+# Dev dependencies — installed with: uv sync (dev group is included by default)
+[dependency-groups]
+dev = [
+    "pytest>=8.2.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.4.4",
+    "mypy>=1.10.0",
+    "ipykernel>=6.29.0",       # notebook exploration
+]
+
+[tool.uv]
+# Tell uv this project has no installable package to build
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true

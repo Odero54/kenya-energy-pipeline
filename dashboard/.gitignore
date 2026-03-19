@@ -1,0 +1,5 @@
+.evidence/
+build/
+node_modules/
+.env
+sources/**/*.db

@@ -110,3 +110,5 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+# Ensure to set the github pages source to "Github Actions"

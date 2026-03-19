@@ -60,8 +60,10 @@ jobs:
         run: echo "$BRUIN_CONFIG" > .bruin.yml
 
       # ── Run pipeline ──────────────────────────────────────────────────────
+      # --workers 1 prevents concurrent writes to the single DuckDB file,
+      # which causes lock conflicts when Bruin's default 16 workers run in parallel.
       - name: Run Bruin pipeline
-        run: bruin run pipeline.yml
+        run: bruin run pipeline.yml --workers 1
 
       # ── Geo spatial marts + GeoJSON export ───────────────────────────────
       - name: Build geo spatial marts and export GeoJSON

@@ -13,13 +13,13 @@ depends:
 columns:
   - name: year
     checks:
-      - not_null
+      - name: not_null
   - name: source_type
     checks:
-      - not_null
+      - name: not_null
   - name: generation_twh
     checks:
-      - not_null
+      - name: not_null
 @bruin */
 
 SELECT
@@ -31,7 +31,7 @@ SELECT
     ROUND(share_pct, 2)                 AS share_pct,
     ROUND(capacity_mw, 1)               AS capacity_mw,
     ROUND(cuf, 3)                       AS capacity_utilisation_factor,
-    is_renewable,
+    CASE WHEN LOWER(category) LIKE '%renewable%' THEN TRUE ELSE FALSE END AS is_renewable,
 
     -- Rank within year by generation (for sorting in charts)
     RANK() OVER (

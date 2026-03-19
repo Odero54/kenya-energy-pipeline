@@ -13,11 +13,12 @@ data from Ember Climate, IRENA, Our World in Data, and EnergyData.info.
 ## At a glance
 
 ```sql latest
-SELECT * FROM kenya_energy.energy_kpis LIMIT 1
-```
-
-```sql prev_year
-SELECT * FROM kenya_energy.energy_kpis LIMIT 1 OFFSET 1
+SELECT
+  *,
+  LAG(renewable_share_pct) OVER (ORDER BY year) AS prev_renewable_share_pct
+FROM kenya_energy.energy_kpis
+ORDER BY year DESC
+LIMIT 1
 ```
 
 <BigValue
@@ -25,8 +26,7 @@ SELECT * FROM kenya_energy.energy_kpis LIMIT 1 OFFSET 1
   value="renewable_share_pct"
   title="Renewable share (%)"
   fmt="0.0"
-  comparison={prev_year}
-  comparisonValue="renewable_share_pct"
+  comparison="prev_renewable_share_pct"
   comparisonTitle="vs prior year"
 />
 
@@ -77,7 +77,6 @@ SELECT * FROM kenya_energy.renewable_mix ORDER BY year
   data={renewable_mix}
   x="year"
   y={["geothermal_twh", "hydro_twh", "wind_twh", "solar_twh", "bioenergy_twh", "fossil_twh"]}
-  labels={["Geothermal", "Hydro", "Wind", "Solar", "Bioenergy", "Fossil"]}
   title="Electricity generation by source (TWh)"
   yAxisTitle="TWh"
   type="stacked"
@@ -91,10 +90,9 @@ SELECT * FROM kenya_energy.renewable_mix ORDER BY year
   yAxisTitle="% of total"
   yMin=0
   yMax=100
-  annotations={[
-    {y: 100, label: "2030 target: 100%", color: "#E8593C"}
-  ]}
-/>
+>
+  <ReferenceLine y=100 label="2030 target: 100%" color="#E8593C" />
+</LineChart>
 
 ---
 
@@ -114,7 +112,6 @@ ORDER BY year
   data={target_progress}
   x="year"
   y={["renewable_share_pct", "gap_pp"]}
-  labels={["Renewable (%)", "Gap to 100% (pp)"]}
   title="Progress toward 100% renewable electricity by 2030"
   type="stacked"
   yAxisTitle="%"
@@ -161,7 +158,6 @@ ORDER BY year
   data={geo_vs_others}
   x="year"
   y={["geothermal_twh", "other_renewables_twh", "fossil_twh"]}
-  labels={["Geothermal", "Other renewables", "Fossil fuels"]}
   title="Geothermal vs other renewables vs fossil (TWh)"
   type="stacked"
 />

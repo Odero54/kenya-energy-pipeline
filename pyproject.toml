@@ -14,18 +14,14 @@ dependencies = [
     "requests>=2.31.0",
     "openpyxl>=3.1.2",        # IRENA Excel files
     "lxml>=5.1.0",            # HTML/XML parsing fallback
-
     # Database
     "duckdb>=1.1.0",
-
     # Geospatial (EnergyData.info GeoJSON → Shapely WKT)
     "shapely>=2.0.4",
     "geopandas>=0.14.4",
     "pyproj>=3.6.1",
-
     # World Bank data (supplementary)
     "wbdata>=1.0.0",
-
     # Utilities
     "python-dotenv>=1.0.1",
     "tenacity>=8.3.0",         # retry logic for HTTP calls

@@ -1,3 +1,0 @@
-# This file is kept for legacy reference only.
-# All dependencies are now managed by pyproject.toml via uv.
-# To install: uv sync

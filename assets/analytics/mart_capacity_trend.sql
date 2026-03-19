@@ -14,11 +14,11 @@ depends:
 columns:
   - name: year
     checks:
-      - not_null
-      - unique
+      - name: not_null
+      - name: unique
   - name: total_renewable_mw
     checks:
-      - not_null
+      - name: not_null
 @bruin */
 
 WITH capacity_by_tech AS (

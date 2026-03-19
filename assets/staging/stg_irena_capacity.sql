@@ -12,13 +12,13 @@ depends:
 columns:
   - name: year
     checks:
-      - not_null
+      - name: not_null
   - name: technology
     checks:
-      - not_null
+      - name: not_null
   - name: capacity_mw
     checks:
-      - not_null
+      - name: not_null
 @bruin */
 
 SELECT

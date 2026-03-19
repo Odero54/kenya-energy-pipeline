@@ -12,19 +12,19 @@ depends:
 columns:
   - name: year
     checks:
-      - not_null
+      - name: not_null
       - accepted_range:
           min: 2000
           max: 2030
   - name: variable
     checks:
-      - not_null
+      - name: not_null
   - name: unit
     checks:
-      - not_null
+      - name: not_null
   - name: value_clean
     checks:
-      - not_null
+      - name: not_null
 @bruin */
 
 SELECT
@@ -58,7 +58,7 @@ SELECT
         ELSE FALSE
     END                                                 AS is_fossil,
 
-    COALESCE(TRIM(source_name), TRIM(source), 'Ember') AS data_source,
+    'Ember'                                             AS data_source,
     _ingested_at
 
 FROM ingestion.raw_ember_generation

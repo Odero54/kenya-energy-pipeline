@@ -17,20 +17,19 @@ depends:
 columns:
   - name: country
     checks:
-      - not_null
+      - name: not_null
   - name: year
     checks:
-      - not_null
+      - name: not_null
   - name: technology
     checks:
-      - not_null
+      - name: not_null
   - name: capacity_mw
     checks:
-      - not_null
+      - name: not_null
 @bruin """
 
 import pandas as pd
-import duckdb
 import requests
 import logging
 import io
@@ -55,6 +54,7 @@ IRENA_API_URL = (
 )
 
 COUNTRY_NAME = "Kenya"
+
 
 def fetch_irena_via_api() -> pd.DataFrame:
     """Query the IRENA PXWEB API for Kenya capacity data."""
@@ -128,34 +128,23 @@ def build_irena_manual() -> pd.DataFrame:
     return df
 
 
-# Try live fetch first, fall back to curated data
-df = None
-try:
-    logger.info("Attempting IRENA API fetch...")
-    df = fetch_irena_via_api()
-    # Normalise API response columns
-    df.columns = df.columns.str.lower().str.replace(" ", "_")
-    if "country" not in df.columns:
-        raise ValueError("Unexpected API schema")
-    df = df[df["country"].str.lower() == COUNTRY_NAME.lower()].copy()
-    df["_source"] = "irena_api"
-    logger.info(f"IRENA API returned {len(df)} rows")
-except Exception as e:
-    logger.warning(f"IRENA API unavailable ({e}), using curated fallback data")
-    df = build_irena_manual()
-    df["_source"] = "irena_curated_fallback"
+def materialize() -> pd.DataFrame:
+    df = None
+    try:
+        logger.info("Attempting IRENA API fetch...")
+        df = fetch_irena_via_api()
+        # Normalise API response columns
+        df.columns = df.columns.str.lower().str.replace(" ", "_")
+        if "country" not in df.columns:
+            raise ValueError("Unexpected API schema")
+        df = df[df["country"].str.lower() == COUNTRY_NAME.lower()].copy()
+        df["_source"] = "irena_api"
+        logger.info(f"IRENA API returned {len(df)} rows")
+    except Exception as e:
+        logger.warning(f"IRENA API unavailable ({e}), using curated fallback data")
+        df = build_irena_manual()
+        df["_source"] = "irena_curated_fallback"
 
-df["_ingested_at"] = pd.Timestamp.utcnow()
-
-# Write to DuckDB
-conn = duckdb.connect("kenya_energy.db")
-conn.execute("CREATE SCHEMA IF NOT EXISTS ingestion")
-conn.execute(
-    "CREATE OR REPLACE TABLE ingestion.raw_irena_capacity AS SELECT * FROM df"
-)
-row_count = conn.execute(
-    "SELECT COUNT(*) FROM ingestion.raw_irena_capacity"
-).fetchone()[0]
-conn.close()
-
-logger.info(f"Wrote {row_count} rows to ingestion.raw_irena_capacity")
+    df["_ingested_at"] = pd.Timestamp.now("UTC")
+    logger.info(f"Returning {len(df)} rows")
+    return df

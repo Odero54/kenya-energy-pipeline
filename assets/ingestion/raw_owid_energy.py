@@ -15,14 +15,13 @@ depends:
 columns:
   - name: iso_code
     checks:
-      - not_null
+      - name: not_null
   - name: year
     checks:
-      - not_null
+      - name: not_null
 @bruin """
 
 import pandas as pd
-import duckdb
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -35,34 +34,26 @@ OWID_URL = (
 
 COUNTRY_ISO = "KEN"
 
-logger.info(f"Fetching OWID energy data from: {OWID_URL}")
 
-df = pd.read_csv(OWID_URL, low_memory=False)
-logger.info(f"Raw shape: {df.shape}")
+def materialize() -> pd.DataFrame:
+    logger.info(f"Fetching OWID energy data from: {OWID_URL}")
 
-# Filter to Kenya
-df = df[df["iso_code"] == COUNTRY_ISO].copy()
-logger.info(f"Kenya rows: {len(df)}")
+    df = pd.read_csv(OWID_URL, low_memory=False)
+    logger.info(f"Raw shape: {df.shape}")
 
-# Drop columns that are entirely null for Kenya
-df = df.dropna(axis=1, how="all")
+    # Filter to Kenya
+    df = df[df["iso_code"] == COUNTRY_ISO].copy()
+    logger.info(f"Kenya rows: {len(df)}")
 
-# Ensure year is integer
-df["year"] = df["year"].astype(int)
+    # Drop columns that are entirely null for Kenya
+    df = df.dropna(axis=1, how="all")
 
-# Add ingestion metadata
-df["_ingested_at"] = pd.Timestamp.utcnow()
-df["_source"] = "owid_energy_github"
+    # Ensure year is integer
+    df["year"] = df["year"].astype(int)
 
-# Write to DuckDB
-conn = duckdb.connect("kenya_energy.db")
-conn.execute("CREATE SCHEMA IF NOT EXISTS ingestion")
-conn.execute(
-    "CREATE OR REPLACE TABLE ingestion.raw_owid_energy AS SELECT * FROM df"
-)
-row_count = conn.execute(
-    "SELECT COUNT(*) FROM ingestion.raw_owid_energy"
-).fetchone()[0]
-conn.close()
+    # Add ingestion metadata
+    df["_ingested_at"] = pd.Timestamp.now("UTC")
+    df["_source"] = "owid_energy_github"
 
-logger.info(f"Wrote {row_count} rows to ingestion.raw_owid_energy")
+    logger.info(f"Returning {len(df)} rows")
+    return df

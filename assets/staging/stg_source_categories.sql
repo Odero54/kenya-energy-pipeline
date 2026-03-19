@@ -15,7 +15,7 @@ SELECT
     TRIM(subcategory)    AS subcategory,
     CAST(
         CASE
-            WHEN LOWER(TRIM(is_renewable)) IN ('true','1','yes') THEN TRUE
+            WHEN LOWER(TRIM(CAST(is_renewable AS VARCHAR))) IN ('true','1','yes') THEN TRUE
             ELSE FALSE
         END
     AS BOOLEAN)          AS is_renewable,

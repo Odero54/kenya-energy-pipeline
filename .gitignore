@@ -28,3 +28,7 @@ uv.lock
 # Editor
 .vscode/settings.json
 .idea/
+.bruin.yml
+logs/runs
+logs/*.log
+*.py[cod]

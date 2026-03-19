@@ -19,7 +19,6 @@ depends:
 @bruin """
 
 import pandas as pd
-import duckdb
 import requests
 import json
 import logging
@@ -73,71 +72,59 @@ def fetch_geojson_resource(url: str, dataset_name: str) -> pd.DataFrame:
     return geojson_to_df(geojson, dataset_name)
 
 
-# ---------------------------------------------------------------------------
-# Main ingestion
-# ---------------------------------------------------------------------------
-all_frames = []
+def materialize() -> pd.DataFrame:
+    all_frames = []
 
-for dataset_key, dataset_id in DATASETS.items():
-    logger.info(f"Fetching resources for: {dataset_id}")
-    try:
-        resources = fetch_ckan_resources(dataset_id)
-        for res in resources:
-            fmt = (res.get("format") or "").upper()
-            name = res.get("name", "")
-            url = res.get("url", "")
+    for dataset_key, dataset_id in DATASETS.items():
+        logger.info(f"Fetching resources for: {dataset_id}")
+        try:
+            resources = fetch_ckan_resources(dataset_id)
+            for res in resources:
+                fmt = (res.get("format") or "").upper()
+                name = res.get("name", "")
+                url = res.get("url", "")
 
-            if fmt in ("GEOJSON", "JSON") and url:
-                logger.info(f"  Downloading GeoJSON: {name} ({url[:60]}...)")
-                try:
-                    df = fetch_geojson_resource(url, dataset_key)
-                    df["resource_name"] = name
-                    df["resource_id"]   = res.get("id")
-                    all_frames.append(df)
-                    logger.info(f"    → {len(df)} features")
-                except Exception as e:
-                    logger.warning(f"    Skipped (error: {e})")
+                if fmt in ("GEOJSON", "JSON") and url:
+                    logger.info(f"  Downloading GeoJSON: {name} ({url[:60]}...)")
+                    try:
+                        df = fetch_geojson_resource(url, dataset_key)
+                        df["resource_name"] = name
+                        df["resource_id"]   = res.get("id")
+                        all_frames.append(df)
+                        logger.info(f"    → {len(df)} features")
+                    except Exception as e:
+                        logger.warning(f"    Skipped (error: {e})")
 
-            elif fmt == "CSV" and url and "solar_radiation" in dataset_key:
-                # For solar radiation, ingest the station summary CSV
-                logger.info(f"  Downloading CSV: {name}")
-                try:
-                    df_csv = pd.read_csv(url)
-                    df_csv["dataset"]       = dataset_key
-                    df_csv["resource_name"] = name
-                    df_csv["geometry_type"] = None
-                    df_csv["geometry_wkt"]  = None
-                    all_frames.append(df_csv)
-                    logger.info(f"    → {len(df_csv)} rows")
-                except Exception as e:
-                    logger.warning(f"    Skipped CSV (error: {e})")
+                elif fmt == "CSV" and url and "solar_radiation" in dataset_key:
+                    # For solar radiation, ingest the station summary CSV
+                    logger.info(f"  Downloading CSV: {name}")
+                    try:
+                        df_csv = pd.read_csv(url)
+                        df_csv["dataset"]       = dataset_key
+                        df_csv["resource_name"] = name
+                        df_csv["geometry_type"] = None
+                        df_csv["geometry_wkt"]  = None
+                        all_frames.append(df_csv)
+                        logger.info(f"    → {len(df_csv)} rows")
+                    except Exception as e:
+                        logger.warning(f"    Skipped CSV (error: {e})")
 
-    except Exception as e:
-        logger.warning(f"Failed to fetch {dataset_id}: {e}")
+        except Exception as e:
+            logger.warning(f"Failed to fetch {dataset_id}: {e}")
 
-if all_frames:
-    result_df = pd.concat(all_frames, ignore_index=True)
-else:
-    logger.warning("No EnergyData.info resources fetched — creating empty placeholder")
-    result_df = pd.DataFrame({
-        "dataset": pd.Series(dtype="str"),
-        "resource_name": pd.Series(dtype="str"),
-        "geometry_type": pd.Series(dtype="str"),
-        "geometry_wkt": pd.Series(dtype="str"),
-    })
+    if all_frames:
+        result_df = pd.concat(all_frames, ignore_index=True)
+    else:
+        logger.warning("No EnergyData.info resources fetched — creating empty placeholder")
+        result_df = pd.DataFrame({
+            "dataset": pd.Series(dtype="str"),
+            "resource_name": pd.Series(dtype="str"),
+            "geometry_type": pd.Series(dtype="str"),
+            "geometry_wkt": pd.Series(dtype="str"),
+        })
 
-result_df["_ingested_at"] = pd.Timestamp.utcnow()
-result_df["_source"] = "energydata_info_ckan"
+    result_df["_ingested_at"] = pd.Timestamp.now("UTC")
+    result_df["_source"] = "energydata_info_ckan"
 
-# Write to DuckDB
-conn = duckdb.connect("kenya_energy.db")
-conn.execute("CREATE SCHEMA IF NOT EXISTS ingestion")
-conn.execute(
-    "CREATE OR REPLACE TABLE ingestion.raw_energydata_geo AS SELECT * FROM result_df"
-)
-row_count = conn.execute(
-    "SELECT COUNT(*) FROM ingestion.raw_energydata_geo"
-).fetchone()[0]
-conn.close()
-
-logger.info(f"Wrote {row_count} rows to ingestion.raw_energydata_geo")
+    logger.info(f"Returning {len(result_df)} rows")
+    return result_df

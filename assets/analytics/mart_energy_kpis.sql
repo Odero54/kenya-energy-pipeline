@@ -14,8 +14,8 @@ depends:
 columns:
   - name: year
     checks:
-      - not_null
-      - unique
+      - name: not_null
+      - name: unique
 @bruin */
 
 WITH owid AS (

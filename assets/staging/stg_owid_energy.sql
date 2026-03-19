@@ -12,13 +12,13 @@ depends:
 columns:
   - name: year
     checks:
-      - not_null
+      - name: not_null
       - accepted_range:
           min: 1990
           max: 2030
   - name: country
     checks:
-      - not_null
+      - name: not_null
 @bruin */
 
 SELECT
@@ -26,8 +26,8 @@ SELECT
     country,
     iso_code,
 
-    -- Electricity access
-    ROUND(CAST(access_to_electricity                AS DOUBLE), 2)  AS access_to_electricity_pct,
+    -- Electricity access (removed from OWID dataset; preserved as NULL for schema compatibility)
+    CAST(NULL AS DOUBLE)                                             AS access_to_electricity_pct,
 
     -- Per-capita consumption (kWh)
     ROUND(CAST(per_capita_electricity               AS DOUBLE), 2)  AS per_capita_elec_kwh,
@@ -42,7 +42,7 @@ SELECT
     ROUND(CAST(hydro_electricity                    AS DOUBLE), 4)  AS hydro_elec_twh,
     ROUND(CAST(wind_electricity                     AS DOUBLE), 4)  AS wind_elec_twh,
     ROUND(CAST(solar_electricity                    AS DOUBLE), 4)  AS solar_elec_twh,
-    ROUND(CAST(other_renewables_electricity         AS DOUBLE), 4)  AS other_renewables_elec_twh,
+    ROUND(CAST(other_renewable_electricity          AS DOUBLE), 4)  AS other_renewables_elec_twh,
     ROUND(CAST(fossil_electricity                   AS DOUBLE), 4)  AS fossil_elec_twh,
     ROUND(CAST(nuclear_electricity                  AS DOUBLE), 4)  AS nuclear_elec_twh,
 
@@ -53,10 +53,10 @@ SELECT
 
     -- Primary energy
     ROUND(CAST(primary_energy_consumption           AS DOUBLE), 4)  AS primary_energy_twh,
-    ROUND(CAST(renewables_share_energy              AS DOUBLE), 2)  AS renewables_share_energy_pct,
+    CAST(NULL AS DOUBLE)                                             AS renewables_share_energy_pct,
 
     -- CO2
-    ROUND(CAST(co2_emissions_from_electricity       AS DOUBLE), 4)  AS co2_from_elec_mtco2,
+    CAST(NULL AS DOUBLE)                                             AS co2_from_elec_mtco2,
     ROUND(CAST(greenhouse_gas_emissions             AS DOUBLE), 4)  AS ghg_emissions_mtco2eq,
 
     _ingested_at

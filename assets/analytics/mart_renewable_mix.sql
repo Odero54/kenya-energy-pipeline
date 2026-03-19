@@ -13,14 +13,14 @@ depends:
 columns:
   - name: year
     checks:
-      - not_null
-      - unique
+      - name: not_null
+      - name: unique
       - accepted_range:
           min: 2000
           max: 2030
   - name: total_generation_twh
     checks:
-      - not_null
+      - name: not_null
   - name: renewable_share_pct
     checks:
       - accepted_range:

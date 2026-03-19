@@ -8,6 +8,8 @@ Kenya targets **100% renewable electricity by 2030**. This dashboard tracks
 progress across generation mix, installed capacity, and key energy KPIs using
 data from Ember Climate, IRENA, Our World in Data, and EnergyData.info.
 
+Pages: [Generation mix](/) · [Installed capacity](/capacity) · [Sources explorer](/sources) · [KPIs & access](/kpis) · [Geo infrastructure](/geo-infrastructure)
+
 ---
 
 ## At a glance
@@ -62,7 +64,7 @@ LIMIT 1
   data={latest}
   value="gap_to_100pct_target"
   title="Gap to 2030 target (pp)"
-  fmt="0.1"
+  fmt="num1"
 />
 
 ---

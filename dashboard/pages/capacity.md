@@ -71,20 +71,19 @@ indicate a technology is running near its nameplate rating.
 ```sql cuf
 SELECT
   year,
-  geothermal_cuf,
-  hydro_cuf,
-  wind_cuf,
-  solar_cuf
-FROM kenya_energy.capacity_trend
-WHERE geothermal_cuf IS NOT NULL
-ORDER BY year
+  source_type,
+  capacity_utilisation_factor AS cuf
+FROM kenya_energy.generation_by_source
+WHERE capacity_utilisation_factor IS NOT NULL
+  AND is_renewable = true
+ORDER BY year, source_type
 ```
 
 <LineChart
   data={cuf}
   x="year"
-  y={["geothermal_cuf", "hydro_cuf", "wind_cuf", "solar_cuf"]}
-  labels={["Geothermal", "Hydro", "Wind", "Solar"]}
+  y="cuf"
+  series="source_type"
   title="Capacity utilisation factor by technology"
   yAxisTitle="CUF (0–1)"
   yMin=0

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kenya Energy Infrastructure Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: system-ui, sans-serif; }
+    #map { height: 100vh; }
+
+    .leaflet-control-layers-overlays label { display: flex; align-items: center; gap: 6px; padding: 2px 0; font-size: 13px; }
+
+    .legend {
+      background: white;
+      padding: 10px 14px;
+      border-radius: 6px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+      font-size: 12px;
+      line-height: 1.8;
+    }
+    .legend-title { font-weight: 700; margin-bottom: 4px; font-size: 13px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .legend-line { height: 3px; width: 22px; border-radius: 2px; }
+    .legend-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+
+<script>
+var map = L.map('map', { zoomControl: true }).setView([-0.5, 37.5], 7);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a> | Source: EnergyData.info / KPLC',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+// ── voltage style registry ────────────────────────────────────────────────
+var LINE_STYLES = {
+  '220kV Network': { color: '#c0392b', weight: 2.8, opacity: 0.95 },
+  '132kV Network': { color: '#e74c3c', weight: 2.2, opacity: 0.9  },
+  '66kV Network':  { color: '#e67e22', weight: 1.6, opacity: 0.85 }
+};
+
+// ── layer groups ──────────────────────────────────────────────────────────
+var layers = {
+  '220kV Network': L.layerGroup(),
+  '132kV Network': L.layerGroup(),
+  '66kV Network':  L.layerGroup(),
+  'Substations':   L.layerGroup()
+};
+
+// ── load data ─────────────────────────────────────────────────────────────
+fetch('/kenya_infrastructure.geojson')
+  .then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
+  .then(function(data) {
+    data.features.forEach(function(feature) {
+      var p = feature.properties;
+
+      if (p.layer === 'transmission_line') {
+        var style = LINE_STYLES[p.resource_name] || { color: '#95a5a6', weight: 1.5, opacity: 0.7 };
+        var line = L.geoJSON(feature, {
+          style: style,
+          onEachFeature: function(f, layer) {
+            layer.bindTooltip(f.properties.resource_name, { sticky: true, opacity: 0.85 });
+            layer.bindPopup(
+              '<b>' + f.properties.resource_name + '</b>' +
+              (f.properties.voltage_kv ? '<br><span style="color:#555">Voltage: ' + f.properties.voltage_kv + '</span>' : '')
+            );
+          }
+        });
+        if (layers[p.resource_name]) line.addTo(layers[p.resource_name]);
+
+      } else if (p.layer === 'substation') {
+        var coords = feature.geometry.coordinates;
+        var marker = L.circleMarker([coords[1], coords[0]], {
+          radius: 6,
+          fillColor: '#2980b9',
+          color: '#1a5276',
+          weight: 1.5,
+          opacity: 1,
+          fillOpacity: 0.85
+        });
+        marker.bindTooltip(p.station_name, { opacity: 0.9 });
+        marker.bindPopup(
+          '<div style="min-width:180px">' +
+          '<b style="font-size:13px">' + p.station_name + '</b>' +
+          (p.county  ? '<br>County: '  + p.county  : '') +
+          (p.owner   ? '<br>Owner: '   + p.owner   : '') +
+          (p.manned  ? '<br>Manned: '  + p.manned  : '') +
+          '</div>'
+        );
+        marker.addTo(layers['Substations']);
+      }
+    });
+
+    // Add all layers to map
+    Object.values(layers).forEach(function(g) { g.addTo(map); });
+
+    // ── layer toggle control ──────────────────────────────────────────────
+    var overlays = {};
+    overlays['<span style="border-bottom:3px solid #c0392b;padding-bottom:1px">220 kV</span>'] = layers['220kV Network'];
+    overlays['<span style="border-bottom:3px solid #e74c3c;padding-bottom:1px">132 kV</span>'] = layers['132kV Network'];
+    overlays['<span style="border-bottom:3px solid #e67e22;padding-bottom:1px">66 kV</span>'] = layers['66kV Network'];
+    overlays['<span style="color:#2980b9;font-weight:600">&#9679; Substations</span>'] = layers['Substations'];
+
+    L.control.layers(null, overlays, { collapsed: false, position: 'topright' }).addTo(map);
+
+    // ── legend ─────────────────────────────────────────────────────────────
+    var legend = L.control({ position: 'bottomleft' });
+    legend.onAdd = function() {
+      var div = L.DomUtil.create('div', 'legend');
+      div.innerHTML =
+        '<div class="legend-title">Kenya HV Grid</div>' +
+        '<div class="legend-item"><div class="legend-line" style="background:#c0392b"></div>220 kV (' + layers['220kV Network'].getLayers().length + ' seg.)</div>' +
+        '<div class="legend-item"><div class="legend-line" style="background:#e74c3c"></div>132 kV (' + layers['132kV Network'].getLayers().length + ' seg.)</div>' +
+        '<div class="legend-item"><div class="legend-line" style="background:#e67e22"></div>66 kV ('  + layers['66kV Network'].getLayers().length  + ' seg.)</div>' +
+        '<div class="legend-item"><div class="legend-dot"  style="background:#2980b9"></div>Substations (' + layers['Substations'].getLayers().length + ')</div>';
+      return div;
+    };
+    legend.addTo(map);
+  })
+  .catch(function(err) {
+    document.getElementById('map').innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#c0392b;font-size:14px">Failed to load map data: ' + err.message + '</div>';
+  });
+</script>
+</body>
+</html>
